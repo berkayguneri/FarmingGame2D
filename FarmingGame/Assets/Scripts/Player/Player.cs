@@ -1,7 +1,9 @@
+using System;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using System.Collections;
 using System.Collections.Generic;
-public class Player : SingletonMonobehaviour<Player>
+public class Player : SingletonMonobehaviour<Player>,ISaveable
 {
     
     private WaitForSeconds afterLiftToolAnimationPause;
@@ -45,9 +47,9 @@ public class Player : SingletonMonobehaviour<Player>
     private WaitForSeconds useToolAnimationPause;
     private WaitForSeconds liftToolAnimationPause;
     private WaitForSeconds pickAnimationPause;
-#pragma warning disable 414
+
     private Direction playerDirection;
-#pragma warning restore 414
+
 
     private List<CharacterAttribute> characterAttributesCustomisationList;
     private float movementSpeed;
@@ -64,6 +66,14 @@ public class Player : SingletonMonobehaviour<Player>
 
     public bool PlayerInputIsDisabled { get => playerInputIsDisabled; set => playerInputIsDisabled = value;}
 
+    private string _iSaveableUniqueID;
+
+    public string ISaveableUniqueID { get { return _iSaveableUniqueID; }set { _iSaveableUniqueID = value; } }
+
+    private GameobjectSave _gameObjectSave;
+
+    public GameobjectSave GameobjectSave { get { return _gameObjectSave; } set { _gameObjectSave = value; } }
+
     protected override void Awake()
     {
         base.Awake();
@@ -78,17 +88,27 @@ public class Player : SingletonMonobehaviour<Player>
         //Initialise character attributes list
         characterAttributesCustomisationList = new List<CharacterAttribute>();
 
+        ISaveableUniqueID = GetComponent<GenerateGUID>().GUID;
+
+        GameobjectSave = new GameobjectSave();
+
+
+
         mainCam = Camera.main;
     }
 
     private void OnDisable()
     {
+        ISaveableDeRegister();
+
         EventHandler.BeforeSceneUnloadFadeOutEvent -= DisablePlayerInputAndResetMovement;
         EventHandler.AfterSceneLoadFadeInEvent -= EnablePlayerInput;
     }
 
     private void OnEnable()
     {
+        ISaveableRegister();
+
         EventHandler.BeforeSceneUnloadFadeOutEvent += DisablePlayerInputAndResetMovement;
         EventHandler.AfterSceneLoadFadeInEvent += EnablePlayerInput;
     }
@@ -909,5 +929,113 @@ public class Player : SingletonMonobehaviour<Player>
     public Vector3 GetPlayerCentrePosition()
     {
         return new Vector3(transform.position.x, transform.position.y + Settings.playerCentreYOffset, transform.position.z);
+    }
+
+    public void ISaveableRegister()
+    {
+        SaveLoadManager.Instance.iSaveableObjectList.Add(this);
+    }
+    public void ISaveableDeRegister()
+    {
+        SaveLoadManager.Instance.iSaveableObjectList.Remove(this);
+    }
+
+    public GameobjectSave ISaveableSave()
+    {
+        GameobjectSave.sceneData.Remove(Settings.PersistentScene);
+
+        SceneSave sceneSave = new SceneSave();
+
+        sceneSave.vector3Dictionary = new Dictionary<string, Vector3Serilazilble>();
+
+        sceneSave.stringDictionary = new Dictionary<string, string>();
+
+        Vector3Serilazilble vector3Serilazilble = new Vector3Serilazilble(transform.position.x, transform.position.y, transform.position.z);
+        sceneSave.vector3Dictionary.Add("playerPosition", vector3Serilazilble);
+
+        sceneSave.stringDictionary.Add("currentScene", SceneManager.GetActiveScene().name);
+
+        sceneSave.stringDictionary.Add("playerDirection", playerDirection.ToString());
+
+        GameobjectSave.sceneData.Add(Settings.PersistentScene, sceneSave);
+
+        return GameobjectSave;
+    }
+
+
+    public void ISaveableLoad(GameSave gameSave)
+    {
+        if (gameSave.gameObjectData.TryGetValue(ISaveableUniqueID, out GameobjectSave gameObjectSave))
+        {
+            if (gameObjectSave.sceneData.TryGetValue(Settings.PersistentScene, out SceneSave sceneSave))
+            {
+                if (sceneSave.vector3Dictionary != null && sceneSave.vector3Dictionary.TryGetValue("playerPosition", out Vector3Serilazilble playerPosition))
+                {
+                    transform.position = new Vector3(playerPosition.x, playerPosition.y, playerPosition.z);
+                }
+
+                if (sceneSave.stringDictionary != null)
+                {
+                    if (sceneSave.stringDictionary.TryGetValue("currentScene", out string currentScene))
+                    {
+                        SceneControllerManager.Instance.FadeAndLoadScene(currentScene, transform.position);
+                    }
+
+                    if (sceneSave.stringDictionary.TryGetValue("playerDirection", out string playerDir))
+                    {
+                        bool playerDirFound = Enum.TryParse<Direction>(playerDir, true, out Direction direction);
+
+                        if (playerDirFound)
+                        {
+                            playerDirection = direction;
+                            SetPlayerDirection(playerDirection);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    public void ISaveableStoreScene(string sceneName)
+    {
+
+    }
+
+    public void ISaveableRestoreScene(string sceneName)
+    {
+
+    }
+
+    public void SetPlayerDirection(Direction direction)
+    {
+        switch (playerDirection)
+        {
+            case Direction.up:
+                EventHandler.CallMovementEvent(0f, 0f, false, false, false, false, ToolEffect.none, false, false, false, false, false, false, false, false,
+                    false, false, false, false, false, false, false, false, true, false, false, false);
+                break;
+
+
+            case Direction.down:
+                EventHandler.CallMovementEvent(0f, 0f, false, false, false, false, ToolEffect.none, false, false, false, false, false, false, false, false,
+                    false, false, false, false, false, false, false, false, false, true, false, false);
+                break;
+
+            case Direction.left:
+                EventHandler.CallMovementEvent(0f, 0f, false, false, false, false, ToolEffect.none, false, false, false, false, false, false, false, false,
+                    false, false, false, false, false, false, false, false, false, false, true, false);
+                break;
+
+            case Direction.right:
+                EventHandler.CallMovementEvent(0f, 0f, false, false, false, false, ToolEffect.none, false, false, false, false, false, false, false, false,
+                    false, false, false, false, false, false, false, false, false, false, false, true);
+                break;
+
+            default:
+                EventHandler.CallMovementEvent(0f, 0f, false, false, false, false, ToolEffect.none, false, false, false, false, false, false, false, false,
+                    false, false, false, false, false, false, false, false, false, true, false, false);
+                break;
+
+        }
     }
 }

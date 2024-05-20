@@ -112,6 +112,16 @@ public enum HarvestActionEffect
     none
 }
 
+public enum Weather
+{
+    dry,
+    raining,
+    snowing,
+    none,
+    count
+}
+
+
 public enum Direction
 {
     up,
@@ -134,4 +144,12 @@ public enum ItemType
     Furniture,//Mobilya
     none,
     count
+}
+
+public enum Facing
+{
+    none,
+    front,
+    back,
+    right
 }

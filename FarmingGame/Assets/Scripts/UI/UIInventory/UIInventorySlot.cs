@@ -9,7 +9,7 @@ public class UIInventorySlot : MonoBehaviour, IBeginDragHandler, IDragHandler,IE
 {
     private Camera mainCamera;
     private Transform parentItem;
-    private GameObject draggedItem;
+    public GameObject draggedItem;
     private GridCursor gridCursor;
     private Cursor cursor;
     private Canvas parentCanvas;

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.Tilemaps;
 
 [RequireComponent(typeof(GenerateGUID))]
@@ -608,10 +609,44 @@ public class GridPropertiesManager : SingletonMonobehaviour<GridPropertiesManage
         return GetGridPropertyDetails(gridX, gridY, gridPropertyDictionary);
     }
 
+    public bool GetGridDimension(SceneName sceneName, out Vector2Int gridDimensions, out Vector2Int gridOrigin)
+    {
+        gridDimensions = Vector2Int.zero;
+        gridOrigin = Vector2Int.zero;
+
+        foreach (SO_GridProperties sO_GridProperties in so_gridPropertiesArray)
+        {
+            if (sO_GridProperties.sceneName == sceneName)
+            {
+                gridDimensions.x = sO_GridProperties.gridWidth;
+                gridDimensions.y = sO_GridProperties.gridHeight;
+
+                gridOrigin.x = sO_GridProperties.originX;
+                gridOrigin.y = sO_GridProperties.originY;
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public void ISaveableDeRegister()
     {
         SaveLoadManager.Instance.iSaveableObjectList.Remove(this);
     }
+
+    public void ISaveableLoad(GameSave gameSave)
+    {
+        if (gameSave.gameObjectData.TryGetValue(ISaveableUniqueID, out GameobjectSave gameobjectSave))
+        {
+            GameobjectSave = gameobjectSave;
+
+            //restore data for current scene
+            ISaveableRestoreScene(SceneManager.GetActiveScene().name);
+        }
+    }
+
     public void ISaveableRegister()
     {
         SaveLoadManager.Instance.iSaveableObjectList.Add(this);
@@ -656,6 +691,14 @@ public class GridPropertiesManager : SingletonMonobehaviour<GridPropertiesManage
         }
     }
 
+    public GameobjectSave ISaveableSave()
+    {
+        ISaveableStoreScene(SceneManager.GetActiveScene().name);
+
+        return GameobjectSave;
+    }
+
+    
     public void ISaveableStoreScene(string sceneName)
     {
         //remove sceneSave for scene

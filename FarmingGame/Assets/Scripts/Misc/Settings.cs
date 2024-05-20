@@ -4,12 +4,15 @@ public static class Settings
 {
     //Obscuring Item Fading- Obscuring Item Fader (Gizlenen Ogeler)
 
+    public const string PersistentScene = "PersistentScene";
+
     public const float fadeInSeconds = 0.25f;
     public const float fadeOutSeconds = 0.35f;
     public const float targetAlpha = 0.45f;
 
     //Tilemap
     public const float gridCellSize = 1f;
+    public const float gridCellDiagonalSize = 1.41f;
     public static Vector2 cursorSize = Vector2.one;
 
 
@@ -27,9 +30,20 @@ public static class Settings
     public static float afterLiftToolAnimationPause = 0.4f;
     public static float afterPickAnimationPause = 0.2f;
 
+    //NPC Movement
+    public static float pixelSize = 0.0625f;
+
     //Inventory
     public static int playerInitialInventoryCapacity = 24;
     public static int playerMaximumInventoryCapacity = 48;
+
+
+    //NPC Animation Parameters
+    public static int walkUp;
+    public static int walkDown;
+    public static int walkLeft;
+    public static int walkRight;
+    public static int eventAnimation;
 
     // Player Animation Parameters
 
@@ -80,6 +94,14 @@ public static class Settings
     //Static constructor
     static Settings()
     {
+        //NPC Animation Parameters
+        walkUp = Animator.StringToHash("walkUp");
+        walkDown = Animator.StringToHash("walkDown");
+        walkLeft = Animator.StringToHash("walkLeft");
+        walkRight = Animator.StringToHash("walkRight");
+        eventAnimation = Animator.StringToHash("eventAnimation");
+
+
         //Player Animation Parameters
         xInput = Animator.StringToHash("xInput");
         yInput = Animator.StringToHash("yInput");

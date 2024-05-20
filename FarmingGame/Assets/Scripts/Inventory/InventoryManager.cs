@@ -3,17 +3,27 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class InventoryManager : SingletonMonobehaviour<InventoryManager>
+public class InventoryManager : SingletonMonobehaviour<InventoryManager>,ISaveable
 {
+    private UIInventoryBar uiInventoryBar;
+
     private Dictionary<int, ItemDetails> itemDetailsDictionary;
 
     private int[] selectedInventoryItem; //the index of the array is the inventory list,and value is the item code 
 
     public List<InventoryItem>[] inventoryLists;
 
-    [HideInInspector] public int[] InventoryListCapacityIntArray;
+    [HideInInspector] public int[] inventoryListCapacityIntArray;
 
     [SerializeField] private SO_ItemList itemList = null;
+
+    private string _iSaveableUniqueID;
+
+    public string ISaveableUniqueID { get { return _iSaveableUniqueID; } set { _iSaveableUniqueID = value; } }
+
+    private GameobjectSave _gameObjectSave;
+
+    public GameobjectSave GameobjectSave { get { return _gameObjectSave; } set { _gameObjectSave = value; } }
 
 
     protected override void Awake()
@@ -33,7 +43,28 @@ public class InventoryManager : SingletonMonobehaviour<InventoryManager>
         {
             selectedInventoryItem[i] = -1;
         }
+
+        ISaveableUniqueID = GetComponent<GenerateGUID>().GUID;
+
+        GameobjectSave = new GameobjectSave();
     }
+
+    private void OnEnable()
+    {
+        ISaveableRegister();
+    }
+
+    private void OnDisable()
+    {
+        ISaveableDeRegister();
+    }
+
+
+    private void Start()
+    {
+        uiInventoryBar = FindObjectOfType<UIInventoryBar>();
+    }
+
 
     private void CreateInventoryLists()
     {
@@ -45,10 +76,10 @@ public class InventoryManager : SingletonMonobehaviour<InventoryManager>
         }
 
         //Initiliaze inventory list capacity array
-        InventoryListCapacityIntArray = new int[(int)InventoryLocation.count];
+        inventoryListCapacityIntArray = new int[(int)InventoryLocation.count];
 
         //Initiliaze player inventory list capacity
-        InventoryListCapacityIntArray[(int)InventoryLocation.player] = Settings.playerInitialInventoryCapacity;
+        inventoryListCapacityIntArray[(int)InventoryLocation.player] = Settings.playerInitialInventoryCapacity;
     }
 
     private void CreatItemDetailsDictionary()
@@ -232,6 +263,72 @@ public class InventoryManager : SingletonMonobehaviour<InventoryManager>
         }
         return itemTypeDescription;
     }
+
+    public void ISaveableRegister()
+    {
+        SaveLoadManager.Instance.iSaveableObjectList.Add(this);
+    }
+    public void ISaveableDeRegister()
+    {
+        SaveLoadManager.Instance.iSaveableObjectList.Remove(this);
+    }
+
+    public GameobjectSave ISaveableSave()
+    {
+        SceneSave sceneSave = new SceneSave();
+
+        GameobjectSave.sceneData.Remove(Settings.PersistentScene);
+
+        sceneSave.listInventoryItemArray = inventoryLists;
+
+        sceneSave.intArrayDictionary = new Dictionary<string, int[]>();
+        sceneSave.intArrayDictionary.Add("inventoryListCapacityArray", inventoryListCapacityIntArray);
+
+        GameobjectSave.sceneData.Add(Settings.PersistentScene, sceneSave);
+        return GameobjectSave;
+    }
+
+    public void ISaveableLoad(GameSave gameSave)
+    {
+        if (gameSave.gameObjectData.TryGetValue(ISaveableUniqueID, out GameobjectSave gameobjectSave))
+        {
+            GameobjectSave = gameobjectSave;
+
+            if (gameobjectSave.sceneData.TryGetValue(Settings.PersistentScene, out SceneSave sceneSave))
+            {
+                if (sceneSave.listInventoryItemArray != null)
+                {
+                    inventoryLists = sceneSave.listInventoryItemArray;
+
+                    for (int i = 0; i <(int)InventoryLocation.count; i++)
+                    {
+                        EventHandler.CallInventoryUpdatedEvent((InventoryLocation)i, inventoryLists[i]);
+                    }
+
+                    Player.Instance.ClearCarriedItem();
+
+                    uiInventoryBar.ClearHighlightOnInventorySlots();
+                }
+
+                if (sceneSave.intArrayDictionary != null && sceneSave.intArrayDictionary.TryGetValue("inventoryListCapacityArray", out int[]
+                    inventoryCapacityArray))
+                {
+                    inventoryListCapacityIntArray = inventoryCapacityArray;
+                }
+            }
+        }
+    }
+
+    public void ISaveableStoreScene(string sceneName)
+    {
+
+    }
+
+    public void ISaveableRestoreScene(string sceneName)
+    {
+
+    }
+
 
     public void RemoveItem(InventoryLocation inventoryLocation, int itemCode)
     {
